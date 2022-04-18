@@ -1,5 +1,12 @@
 # rapidgator-cli-unofficial
-Unofficial rapidgator cli
+
+Bismillah, this is my first "working" project, made entirely with Termux + Acode on android.
+
+Thanks to [Juvenal-Yescas](https://github.com/Juvenal-Yescas/mediafire-dl) that inspire me to make this project.
+
+You can use rapidgator features like Login and Download from your terminal, this program also support Batch Download.
+
+I'll add more features like async download, threading and so on in the future.
 
 ## Getting Started
 ### Installation
@@ -42,7 +49,14 @@ Your answer:
 * Type 1 to login and get token
 output:
 ```
+Token successfully generated! token: <your_token>
 Do you want to use this program again? (y/n)
 ```
 * Type y and you'll back to main menu
 * Now type 2 to actually download the file(s)
+
+If you set `is_batch_download` variable with value `false` then you will get output like this:
+```
+Input rapidgator url:
+```
+You can just input any rapidgator link there
