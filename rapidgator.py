@@ -1,23 +1,25 @@
 import requests, json, re
+from os import sys
 from configuration import configuration, write_token
 
 def get_token(email, password):
   req = requests.get(f'https://rapidgator.net/api/v2/user/login?login={email}&password={password}').text
-  return json.loads(req)['response']['token']
+  resp = json.loads(req)['response']['token']
+  print(f'Token successfully generated! token: {resp}'
     
 def download_file(url, token, download_path):
   if '?' in url:
-    file_id = url.split('?')[0].split('/')[-1]
+    file_id = url.split('?')[0].split('/')[4]
   else:
-    file_id = url.split('/')[-1]
+    file_id = url.split('/')[4]
   base_url = f'https://rapidgator.net/api/v2/file/download?file_id={file_id}&token={token}'
   req = json.loads(requests.get(base_url).text)['response']['download_url']
-  data = requests.get(req, stream = True)
-  if 'Content-Disposition' in data.headers:
-    header = data.headers['Content-Disposition']
+  resp = requests.get(req, stream = True)
+  if 'Content-Disposition' in resp.headers:
+    header = resp.headers['Content-Disposition']
   filename = re.search('filename\=\"(.*?)\"', header).group().split('"')[1]
   with open(f'{download_path}{filename}', 'wb') as outfile:
-    outfile.write(data.content)
+    outfile.write(resp.content)
   print(f'{filename} successfully saved!')
 
 def main():
@@ -35,15 +37,16 @@ Choose your option:
   if answer == '2':
     if is_batch_download == True:
       with open(batch_file, 'r') as urls:
-        for url in urls.split():
+        for url in urls.read().split():
           download_file(url, token, download_path)
     else:
       url = input('Input rapidgator url: ')
       download_file(url, token, download_path)
+  answer = input('Do you want to use this program again? (y/n) ')
+  if answer == 'y':
+    main()
+  elif answer == 'n':
+    sys.exit(0)
 if __name__ == '__main__':
   main()
-  answer = input('Do you want to use this program again? (y/n) ')
-  if answer == 'yes' or ('y'):
-    main()
-  else:
-    exit()
+  
