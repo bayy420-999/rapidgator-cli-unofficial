@@ -9,11 +9,7 @@ def get_token(email, password):
     return resp
 
 def download_file(url, token, download_path):
-    if '?' in url:
-        file_id = url.split('?')[0].split('/')[4]
-    else:
-        file_id = url.split('/')[4]
-
+    file_id = url.split('?')[0].split('/')[4] if '?' in url else url.split('/')[4]
     base_url = f'https://rapidgator.net/api/v2/file/download?file_id={file_id}&token={token}'
     req = json.loads(requests.get(base_url).text)['response']['download_url']
     data = requests.get(req, stream = True)
