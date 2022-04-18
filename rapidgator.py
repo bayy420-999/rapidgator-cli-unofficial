@@ -19,7 +19,7 @@ def download_file(url, token, download_path):
     data = requests.get(req, stream = True)
 
     if 'Content-Disposition' in data.headers:
-        header = resp.headers['Content-Disposition']
+        header = data.headers['Content-Disposition']
         filename = re.search('filename\=\"(.*?)\"', header).group().split('"')[1]
 
     with open(f'{download_path}{filename}', 'wb') as outfile:
