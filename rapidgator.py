@@ -64,7 +64,11 @@ def main():
     email, passwd, token, path, is_batch_download, batch_file = configuration()
     
     if not os.path.isdir(path):
-        os.mkdir(path)
+        try:
+            os.mkdir(path)
+        except FileNotFoundError:
+            print('Invalid path! Please check your `config.ini`.')
+            os._exit(0)
 
     print('Login is needed every few hours to get a valid token.', end=' ')     
     if input('Login? [y/n]: ') in ['y', 'Y', 'yes', 'Yes']:
