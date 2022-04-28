@@ -72,7 +72,8 @@ def main():
 
     print('Login is needed every few hours to get a valid token.', end=' ')     
     if input('Login? [y/n]: ') in ['y', 'Y', 'yes', 'Yes']:
-        write_token(get_token(email, passwd))
+        token = get_token(email, passwd)
+        write_token(token)
 
     if is_batch_download == True:
         with open(batch_file, 'r') as f:
