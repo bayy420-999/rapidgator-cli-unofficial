@@ -26,11 +26,11 @@ def extract_file_id_and_name(url):
     if '.html?referer' in url:
         file_id, name = re.search('file/(.*?)/(.*?).html\?', url).groups()
     elif '?referer' in url:
-        file_id = re.search('file/(.*?)\?referer', url).group(1)
+        file_id = re.search('file/(.*?)\?referer', url)[1]
     elif '.html' in url:
         file_id, name = re.search('file/(.*?)/(.*?).html', url).groups()
     else:
-        file_id = re.search('file/(.*?)(?:/)?$', url).group(1)
+        file_id = re.search('file/(.*?)(?:/)?$', url)[1]
     return file_id, name
          
 def download_file(url, token, path):
@@ -38,7 +38,7 @@ def download_file(url, token, path):
     file_id, filename = extract_file_id_and_name(url)
     url = f'{api}/file/download?file_id={file_id}&token={token}'
     res = json.loads(requests.get(url).text)
-    if not res['status'] == 200:
+    if res['status'] != 200:
         return f'Error! {res}'
     url = res['response']['download_url']
     # If we have filename already, just download.
@@ -52,7 +52,7 @@ def download_file(url, token, path):
     # Now, get filename from header and remove it.
     header = subprocess.check_output(['head', '-10', tmp_name], text=True)
     if 'filename' in header:
-        name = re.search('filename\=\"(.*?)\"', header).group(1)
+        name = re.search('filename\=\"(.*?)\"', header)[1]
         name = str(os.path.join(path, name))
         subprocess.run(['sed', '-i', '1,11d', tmp_name])
         subprocess.run(['mv', tmp_name, name])
