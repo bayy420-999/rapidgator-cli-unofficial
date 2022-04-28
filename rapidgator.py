@@ -1,55 +1,89 @@
-import requests, json, re
-from os import sys
+import os
+import subprocess
+import re
+import json
+from datetime import datetime
+
+import requests
+
 from configuration import configuration, write_token
 
-def get_token(email, password):
-    req = requests.get(f'https://rapidgator.net/api/v2/user/login?login={email}&password={password}').text
-    resp = json.loads(req)['response']['token']
-    print(f'Token successfully generated! token: {resp}')
-    return resp
 
-def download_file(url, token, download_path):
-    file_id = url.split('?')[4].split('/')[4] if '?' in url else url.split('/')[4]
-    base_url = f'https://rapidgator.net/api/v2/file/download?file_id={file_id}&token={token}'
-    req = json.loads(requests.get(base_url).text)['response']['download_url']
-    data = requests.get(req, stream = True)
 
-    if 'Content-Disposition' in data.headers:
-        header = data.headers['Content-Disposition']
-        filename = re.search('filename\=\"(.*?)\"', header).group().split('"')[1]
 
-    with open(f'{download_path}{filename}', 'wb') as outfile:
-        outfile.write(data.content)
-        print(f'{filename} successfully saved!')
+api = 'https://rapidgator.net/api/v2'
+
+def get_token(email, passwd):
+    global api
+    res = requests.get(f'{api}/user/login?login={email}&password={passwd}')
+    token = json.loads(res.text)['response']['token']
+    print(f'Token successfully generated! token: {token}')
+    return token
+
+# TODO: `name` cannot have `.html` i.e. user cannot download HTML files.
+def extract_file_id_and_name(url):
+    name = None
+    if '.html?referer' in url:
+        file_id, name = re.search('file/(.*?)/(.*?).html\?', url).groups()
+    elif '?referer' in url:
+        file_id = re.search('file/(.*?)\?referer', url)[1]
+    elif '.html' in url:
+        file_id, name = re.search('file/(.*?)/(.*?).html', url).groups()
+    else:
+        file_id = re.search('file/(.*?)(?:/)?$', url)[1]
+    return file_id, name
+         
+def download_file(url, token, path):
+    global api
+    file_id, filename = extract_file_id_and_name(url)
+    url = f'{api}/file/download?file_id={file_id}&token={token}'
+    res = json.loads(requests.get(url).text)
+    if res['status'] != 200:
+        return f'Error! {res}'
+    url = res['response']['download_url']
+    # If we have filename already, just download.
+    if filename is not None:
+        subprocess.run(['wget', '-O', os.path.join(path, filename), url])
+        return f'File saved: {os.path.join(path, filename)}'
+    # Otherwise, save a temp file with header in its first 10 lines.
+    start_t = datetime.now().strftime('%Y%m%dT%H%M%S+08')
+    tmp_name = str(os.path.join(path, start_t))
+    subprocess.run(['wget', '--save-headers', '-O', tmp_name, url])
+    # Now, get filename from header and remove it.
+    header = subprocess.check_output(['head', '-10', tmp_name], text=True)
+    if 'filename' in header:
+        name = re.search('filename\=\"(.*?)\"', header)[1]
+        name = str(os.path.join(path, name))
+        subprocess.run(['sed', '-i', '1,11d', tmp_name])
+        subprocess.run(['mv', tmp_name, name])
+        return f'File saved: {name}'
+    # If the filename cannot be found, tell user.
+    return f'Filename cannot be determined! File saved: {tmp_name}'
 
 def main():
-    email, password, token, download_path, is_batch_download, batch_file = configuration()
-    print(
-  '''
-You need to login to get token which will be used to download the file(s), you dont need to generate token everytime you want to download file(s), but remember that the token will expire every few hours.\n
-Choose your option:
-1. Login
-2. Download
-  ''')
-    answer = input('Your answer: ')
-    if answer == '1':
-        write_token(get_token(email, password))
+    email, passwd, token, path, is_batch_download, batch_file = configuration()
+    
+    if not os.path.isdir(path):
+        try:
+            os.mkdir(path)
+        except FileNotFoundError:
+            print('Invalid path! Please check your `config.ini`.')
+            os._exit(0)
 
-    if answer == '2':
-        if is_batch_download == True:
-            with open(batch_file, 'r') as urls:
-                for url in urls.read().split():
-                    download_file(url, token, download_path)
+    print('Login is needed every few hours to get a valid token.', end=' ')     
+    if input('Login? [y/n]: ') in ['y', 'Y', 'yes', 'Yes']:
+        token = get_token(email, passwd)
+        write_token(token)
 
-        else:
-            url = input('Input rapidgator url: ')
-            download_file(url, token, download_path)
-
-    answer = input('Do you want to use this program again? (y/n) ')
-    if answer == 'y':
-        main()
-    elif answer == 'n':
-        sys.exit(0)
+    if is_batch_download == True:
+        with open(batch_file, 'r') as f:
+            urls = f.readlines()
+        for url in urls:
+            print(download_file(url, token, path))
+    else:
+        url = input('Input rapidgator url: ')
+        print(download_file(url, token, path))
+    return
 
 if __name__ == '__main__':
     main()
